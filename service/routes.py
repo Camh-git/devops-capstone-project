@@ -1,102 +1,184 @@
 """
-Account Service
+Account API Service Test Suite
 
-This microservice handles the lifecycle of Accounts
+Test cases can be run with the following:
+  nosetests -v --with-spec --spec-color
+  coverage report -m
 """
-# pylint: disable=unused-import
-from flask import jsonify, request, make_response, abort, url_for   # noqa; F401
-from service.models import Account
+import os
+import logging
+from unittest import TestCase
+from tests.factories import AccountFactory
 from service.common import status  # HTTP Status Codes
-from . import app  # Import Flask application
+from service.models import db, Account, init_db
+from service.routes import app
 
+DATABASE_URI = os.getenv(
+    "DATABASE_URI", "postgresql://postgres:postgres@localhost:5432/postgres"
+)
 
-############################################################
-# Health Endpoint
-############################################################
-@app.route("/health")
-def health():
-    """Health Status"""
-    return jsonify(dict(status="OK")), status.HTTP_200_OK
-
-
-######################################################################
-# GET INDEX
-######################################################################
-@app.route("/")
-def index():
-    """Root URL response"""
-    return (
-        jsonify(
-            name="Account REST API Service",
-            version="1.0",
-            # paths=url_for("list_accounts", _external=True),
-        ),
-        status.HTTP_200_OK,
-    )
+BASE_URL = "/accounts"
 
 
 ######################################################################
-# CREATE A NEW ACCOUNT
+#  T E S T   C A S E S
 ######################################################################
-@app.route("/accounts", methods=["POST"])
-def create_accounts():
-    """
-    Creates an Account
-    This endpoint will create an Account based the data in the body that is posted
-    """
-    app.logger.info("Request to create an Account")
-    check_content_type("application/json")
-    account = Account()
-    account.deserialize(request.get_json())
-    account.create()
-    message = account.serialize()
-    # Uncomment once get_accounts has been implemented
-    # location_url = url_for("get_accounts", account_id=account.id, _external=True)
-    location_url = "/"  # Remove once get_accounts has been implemented
-    return make_response(
-        jsonify(message), status.HTTP_201_CREATED, {"Location": location_url}
-    )
+class TestAccountService(TestCase):
+    """Account Service Tests"""
 
-######################################################################
-# LIST ALL ACCOUNTS
-######################################################################
+    @classmethod
+    def setUpClass(cls):
+        """Run once before all tests"""
+        app.config["TESTING"] = True
+        app.config["DEBUG"] = False
+        app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
+        app.logger.setLevel(logging.CRITICAL)
+        init_db(app)
 
-# ... place you code here to LIST accounts ...
+    @classmethod
+    def tearDownClass(cls):
+        """Runs once before test suite"""
 
+    def setUp(self):
+        """Runs before each test"""
+        db.session.query(Account).delete()  # clean up the last tests
+        db.session.commit()
 
-######################################################################
-# READ AN ACCOUNT
-######################################################################
+        self.client = app.test_client()
 
-# ... place you code here to READ an account ...
+    def tearDown(self):
+        """Runs once after each test case"""
+        db.session.remove()
 
+    ######################################################################
+    #  H E L P E R   M E T H O D S
+    ######################################################################
 
-######################################################################
-# UPDATE AN EXISTING ACCOUNT
-######################################################################
+    def _create_accounts(self, count):
+        """Factory method to create accounts in bulk"""
+        accounts = []
+        for _ in range(count):
+            account = AccountFactory()
+            response = self.client.post(BASE_URL, json=account.serialize())
+            self.assertEqual(
+                response.status_code,
+                status.HTTP_201_CREATED,
+                "Could not create test Account",
+            )
+            new_account = response.get_json()
+            account.id = new_account["id"]
+            accounts.append(account)
+        return accounts
 
-# ... place you code here to UPDATE an account ...
+    ######################################################################
+    #  A C C O U N T   T E S T   C A S E S
+    ######################################################################
 
+    def test_index(self):
+        """It should get 200_OK from the Home Page"""
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-######################################################################
-# DELETE AN ACCOUNT
-######################################################################
+    def test_health(self):
+        """It should be healthy"""
+        resp = self.client.get("/health")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertEqual(data["status"], "OK")
 
-# ... place you code here to DELETE an account ...
+    def test_create_account(self):
+        """It should Create a new Account"""
+        account = AccountFactory()
+        response = self.client.post(
+            BASE_URL,
+            json=account.serialize(),
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+        # Make sure location header is set
+        location = response.headers.get("Location", None)
+        self.assertIsNotNone(location)
 
-######################################################################
-#  U T I L I T Y   F U N C T I O N S
-######################################################################
+        # Check the data is correct
+        new_account = response.get_json()
+        self.assertEqual(new_account["name"], account.name)
+        self.assertEqual(new_account["email"], account.email)
+        self.assertEqual(new_account["address"], account.address)
+        self.assertEqual(new_account["phone_number"], account.phone_number)
+        self.assertEqual(new_account["date_joined"], str(account.date_joined))
 
+    def test_bad_request(self):
+        """It should not Create an Account when sending the wrong data"""
+        response = self.client.post(BASE_URL, json={"name": "not enough data"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-def check_content_type(media_type):
-    """Checks that the media type is correct"""
-    content_type = request.headers.get("Content-Type")
-    if content_type and content_type == media_type:
-        return
-    app.logger.error("Invalid Content-Type: %s", content_type)
-    abort(
-        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-        f"Content-Type must be {media_type}",
-    )
+    def test_unsupported_media_type(self):
+        """It should not Create an Account when sending the wrong media type"""
+        account = AccountFactory()
+        response = self.client.post(
+            BASE_URL,
+            json=account.serialize(),
+            content_type="test/html"
+        )
+        self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+    # ADD YOUR TEST CASES HERE ...
+    
+    def test_list(self):
+        #check that an empty list is returned when there are no accounts
+        response = self.client.get(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.get_json()), 0)
+
+        self._create_accounts(5)
+
+        #check that the correct list is returned when there are accounts
+        response = self.client.get(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.get_json()), 5)
+
+    def test_read_an_account(self):
+        #create the account then try and fetch it
+        acc = self._create_accounts(1)[0]
+        response = self.client.get(
+            f"{BASE_URL}/{account.id}", content_type="application/json"
+        )
+
+        #get the json and check the response code and data
+        info = response.get_json
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(info["name"], acc.name)
+
+    def test_account_not_found(self):
+        response = self.client.get(f"{BASE_URL}/0")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_update(self):
+        #create account
+        test_acc = AccountFactory()
+        response = self.client.post(BASE_URL, json=test_account.serialize())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        #update account
+        new_acc = response.get_json()
+        new_acc["name"] = "Somethingnot Inthefactory"
+        response = self.client.put(f"{BASE_URL}/{new_account['id']}", json=new_account)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        #check for changes
+        update_result = response.get_json()
+        self.assertEqual(update_result["name"],"Somethingnot Inthefactory")
+
+    def test_delete(self):
+        #create an account then delete it
+        acc = self._create_accounts(1)[0]
+        response = self.client.delete(f"{BASE_URL}/{account.id}")
+
+        #check that the response is a 204 message
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_bad_method(self):
+        #run delete on the wrong url to cause the error
+        response = self.client.delete(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
