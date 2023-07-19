@@ -124,28 +124,27 @@ class TestAccountService(TestCase):
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     # ADD YOUR TEST CASES HERE ...
-    
     def test_list(self):
-        #check that an empty list is returned when there are no accounts
+        # check that an empty list is returned when there are no accounts
         response = self.client.get(BASE_URL)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.get_json()), 0)
 
         self._create_accounts(5)
 
-        #check that the correct list is returned when there are accounts
+        # check that the correct list is returned when there are accounts
         response = self.client.get(BASE_URL)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.get_json()), 5)
 
     def test_read_an_account(self):
-        #create the account then try and fetch it
+        # create the account then try and fetch it
         acc = self._create_accounts(1)[0]
         response = self.client.get(
             f"{BASE_URL}/{acc.id}", content_type="application/json"
         )
 
-        #get the json and check the response code and data
+        # get the json and check the response code and data
         info = response.get_json
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(info["name"], acc.name)
@@ -155,30 +154,30 @@ class TestAccountService(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_update(self):
-        #create account
+        # create account
         test_acc = AccountFactory()
         response = self.client.post(BASE_URL, json=test_acc.serialize())
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        #update account
+        # update account
         new_acc = response.get_json()
         new_acc["name"] = "Somethingnot Inthefactory"
         response = self.client.put(f"{BASE_URL}/{new_acc['id']}", json=new_acc)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        #check for changes
+        # check for changes
         update_result = response.get_json()
-        self.assertEqual(update_result["name"],"Somethingnot Inthefactory")
+        self.assertEqual(update_result["name"], "Somethingnot Inthefactory")
 
     def test_delete(self):
-        #create an account then delete it
+        # create an account then delete it
         acc = self._create_accounts(1)[0]
         response = self.client.delete(f"{BASE_URL}/{acc.id}")
 
-        #check that the response is a 204 message
+        # check that the response is a 204 message
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_bad_method(self):
-        #run delete on the wrong url to cause the error
+        # run delete on the wrong url to cause the error
         response = self.client.delete(BASE_URL)
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
