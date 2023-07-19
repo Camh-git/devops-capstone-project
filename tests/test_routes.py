@@ -142,7 +142,7 @@ class TestAccountService(TestCase):
         #create the account then try and fetch it
         acc = self._create_accounts(1)[0]
         response = self.client.get(
-            f"{BASE_URL}/{account.id}", content_type="application/json"
+            f"{BASE_URL}/{acc.id}", content_type="application/json"
         )
 
         #get the json and check the response code and data
@@ -157,7 +157,7 @@ class TestAccountService(TestCase):
     def test_update(self):
         #create account
         test_acc = AccountFactory()
-        response = self.client.post(BASE_URL, json=test_account.serialize())
+        response = self.client.post(BASE_URL, json=test_acc.serialize())
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         #update account
@@ -173,7 +173,7 @@ class TestAccountService(TestCase):
     def test_delete(self):
         #create an account then delete it
         acc = self._create_accounts(1)[0]
-        response = self.client.delete(f"{BASE_URL}/{account.id}")
+        response = self.client.delete(f"{BASE_URL}/{acc.id}")
 
         #check that the response is a 204 message
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
