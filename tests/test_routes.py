@@ -148,7 +148,7 @@ class TestAccountService(TestCase):
         #get the json and check the response code and data
         info = response.get_json
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(info("name"), acc.name)
+        self.assertEqual(info(name), acc.name)
 
     def test_account_not_found(self):
         response = self.client.get(f"{BASE_URL}/0")
