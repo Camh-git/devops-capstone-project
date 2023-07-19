@@ -1,183 +1,188 @@
-"""
-Account API Service Test Suite
+Table of Contents
 
-Test cases can be run with the following:
-  nosetests -v --with-spec --spec-color
-  coverage report -m
-"""
-import os
-import logging
-from unittest import TestCase
-from tests.factories import AccountFactory
-from service.common import status  # HTTP Status Codes
-from service.models import db, Account, init_db
-from service.routes import app
++
+-
 
-DATABASE_URI = os.getenv(
-    "DATABASE_URI", "postgresql://postgres:postgres@localhost:5432/postgres"
-)
+1
+Add Continuous Integration
 
-BASE_URL = "/accounts"
+2
+Note: Important Security Information
 
+3
+Initialize Development Environment
 
-######################################################################
-#  T E S T   C A S E S
-######################################################################
-class TestAccountService(TestCase):
-    """Account Service Tests"""
+4
+Exercise 1: Pick Up the First Story
 
-    @classmethod
-    def setUpClass(cls):
-        """Run once before all tests"""
-        app.config["TESTING"] = True
-        app.config["DEBUG"] = False
-        app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
-        app.logger.setLevel(logging.CRITICAL)
-        init_db(app)
+5
+Exercise 2: Create a Workflow
 
-    @classmethod
-    def tearDownClass(cls):
-        """Runs once before test suite"""
+6
+Exercise 3: Create a Job
 
-    def setUp(self):
-        """Runs before each test"""
-        db.session.query(Account).delete()  # clean up the last tests
-        db.session.commit()
+7
+Exercise 4: Define Required Services
 
-        self.client = app.test_client()
+8
+Exercise 5: Check Out Code and Install Dependencies
 
-    def tearDown(self):
-        """Runs once after each test case"""
-        db.session.remove()
+9
+Exercise 6: Add Linting
 
-    #####################################################################
-    #  H E L P E R   M E T H O D S
-    #####################################################################
+10
+Exercise 7: Add Unit Testing
 
-    def _create_accounts(self, count):
-        """Factory method to create accounts in bulk"""
-        accounts = []
-        for _ in range(count):
-            account = AccountFactory()
-            response = self.client.post(BASE_URL, json=account.serialize())
-            self.assertEqual(
-                response.status_code,
-                status.HTTP_201_CREATED,
-                "Could not create test Account",
-            )
-            new_account = response.get_json()
-            account.id = new_account["id"]
-            accounts.append(account)
-        return accounts
+11
+Exercise 8: Create a Badge
 
-    ######################################################################
-    #  A C C O U N T   T E S T   C A S E S
-    ######################################################################
+12
+Exercise 9: Make a Pull Request
 
-    def test_index(self):
-        """It should get 200_OK from the Home Page"""
-        response = self.client.get("/")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+13
+Exercise 10: View the Workflow Run
 
-    def test_health(self):
-        """It should be healthy"""
-        resp = self.client.get("/health")
-        self.assertEqual(resp.status_code, 200)
-        data = resp.get_json()
-        self.assertEqual(data["status"], "OK")
+14
+Conclusion
+Exercise 7: Add Unit Testing
+To satisfy the testing requirements, you will use Nose in this step to unit test the source code. Nose is configured via the included setup.cfg file to automatically include the flags --with-spec and --spec-color so that red-green-refactor is meaningful. If you are in a command shell that supports colors, passing tests will be green and failing tests will be red.
 
-    def test_create_account(self):
-        """It should Create a new Account"""
-        account = AccountFactory()
-        response = self.client.post(
-            BASE_URL,
-            json=account.serialize(),
-            content_type="application/json"
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+Nose is also configured to automatically run the coverage tool, and you should see a percentage of coverage report at the end of your tests.
 
-        # Make sure location header is set
-        location = response.headers.get("Location", None)
-        self.assertIsNotNone(location)
+Reference
+You can use the following commands to run the nosetests in your workflow steps.
 
-        # Check the data is correct
-        new_account = response.get_json()
-        self.assertEqual(new_account["name"], account.name)
-        self.assertEqual(new_account["email"], account.email)
-        self.assertEqual(new_account["address"], account.address)
-        self.assertEqual(new_account["phone_number"], account.phone_number)
-        self.assertEqual(new_account["date_joined"], str(account.date_joined))
+1
+nosetests -v --with-spec --spec-color --with-coverage --cover-package=service
+Copied!
+Note: You should run these commands on your code before you add them to your workflow to ensure that your code passes the tests. You can use the make test command to do this.
 
-    def test_bad_request(self):
-        """It should not Create an Account when sending the wrong data"""
-        response = self.client.post(BASE_URL, json={"name": "not enough data"})
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+Your Task
+Add a new step named Run unit tests with Nose after the Lint with flake8 step that runs the nosetests commands from the above reference.
 
-    def test_unsupported_media_type(self):
-        """It should not Create an Account when sending the wrong media type"""
-        account = AccountFactory()
-        response = self.client.post(
-            BASE_URL,
-            json=account.serialize(),
-            content_type="test/html"
-        )
-        self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+Click here for a hint.
+Use the env: tag to add an environment variable named DATABASE_URI that will configure the tests to use the PostgreSQL database that you created in the service: section.
 
-    # ADD YOUR TEST CASES HERE ...
-    def test_list(self):
-        # check that an empty list is returned when there are no accounts
-        response = self.client.get(BASE_URL)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.get_json()), 0)
+Click here for a hint.
+Validate
+Your test step definition should look like this:
 
-        self._create_accounts(5)
+Click here to check your answer.
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+jobs:
+  build:
+    services:
+    # ...
+    steps:
+      # ...previous steps here
+      - name: Run unit tests with nose
+        run: nosetests
+        env:
+          DATABASE_URI: "postgresql://postgres:pgs3cr3t@postgres:5432/testdb"
+Copied!
+That completes your workflow definition.
 
-        # check that the correct list is returned when there are accounts
-        response = self.client.get(BASE_URL)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.get_json()), 5)
+Check your final work
+Try and run the workflow that you put together yourself. If anything goes wrong, here is the complete solution so that you can check how it may differ from yours.
 
-    def test_read_an_account(self):
-        # create the account then try and fetch it
-        acc = self._create_accounts(1)[0]
-        response = self.client.get(
-            f"{BASE_URL}/{acc.id}", content_type="application/json"
-        )
-
-        # get the json and check the response code and data
-        info = response.get_json
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(info["name"], acc.name)
-
-    def test_account_not_found(self):
-        response = self.client.get(f"{BASE_URL}/0")
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_update(self):
-        # create account
-        test_acc = AccountFactory()
-        response = self.client.post(BASE_URL, json=test_acc.serialize())
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-        # update account
-        new_acc = response.get_json()
-        new_acc["name"] = "Somethingnot Inthefactory"
-        response = self.client.put(f"{BASE_URL}/{new_acc['id']}", json=new_acc)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # check for changes
-        update_result = response.get_json()
-        self.assertEqual(update_result["name"], "Somethingnot Inthefactory")
-
-    def test_delete(self):
-        # create an account then delete it
-        acc = self._create_accounts(1)[0]
-        response = self.client.delete(f"{BASE_URL}/{acc.id}")
-
-        # check that the response is a 204 message
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-    def test_bad_method(self):
-        # run delete on the wrong url to cause the error
-        response = self.client.delete(BASE_URL)
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+Click here to check the complete solution.
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+name: CI Build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: python:3.9-slim
+    services:
+      postgres:
+        image: postgres:alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: pgs3cr3t
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel
+          pip install -r requirements.txt
+      - name: Lint with flake8
+        run: |
+          flake8 service --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 service --count --max-complexity=10 --max-line-length=127 --statistics
+      - name: Run unit tests with nose
+        run: nosetests
+        env:
+          DATABASE_URI: "postgresql://postgres:pgs3cr3t@postgres:5432/testdb"
+Copied!
+Previous
+Next
