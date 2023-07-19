@@ -139,16 +139,14 @@ class TestAccountService(TestCase):
         self.assertEqual(len(response.get_json()), 5)
 
     def test_read_an_account(self):
-        #create the account then try and fetch it
-        acc = self._create_accounts(1)[0]
-        response = self.client.get(
-            f"{BASE_URL}/{acc.id}", content_type="application/json"
+        #It should Read a single Account
+        account = self._create_accounts(1)[0]
+        resp = self.client.get(
+            f"{BASE_URL}/{account.id}", content_type="application/json"
         )
-
-        #get the json and check the response code and data
-        info = response.get_json
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(info("name"), acc.name)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.get_json()
+        self.assertEqual(data["name"], account.name)
 
     def test_account_not_found(self):
         response = self.client.get(f"{BASE_URL}/0")
