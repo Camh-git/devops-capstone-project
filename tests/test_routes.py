@@ -163,7 +163,7 @@ class TestAccountService(TestCase):
         #update account
         new_acc = response.get_json()
         new_acc["name"] = "Somethingnot Inthefactory"
-        response = self.client.put(f"{BASE_URL}/{new_account['id']}", json=new_account)
+        response = self.client.put(f"{BASE_URL}/{new_account['id']}", json=new_acc)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         #check for changes
